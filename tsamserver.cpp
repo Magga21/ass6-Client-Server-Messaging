@@ -129,7 +129,7 @@ int main(int argc, const char *argv[])
 
 	if((listen(sock, 5))< 0)
 	{
-		td::cerr << "Failed to listen to socket! Braking! " << std::endl;
+		std::cerr << "Failed to listen to socket! Braking! " << std::endl;
 		close(sock);
 		exit(1);
 	}
@@ -146,13 +146,36 @@ int main(int argc, const char *argv[])
 	
 	struct sockaddr_in client;
 	socklen_t clientLen = sizeof(client);
-
-	if(accept(sock, (struct sockaddr*)&client, &clientLen)< 0)
+	while (true){
+	ret = poll(fds.data(), fds.size(), timeout_msecs);
+	
+	if(ret < 0)
 	{
-		// TODO: add poll??
+		std::cerr << "Failed to listen to socket! Braking! " << std::endl;
+		close(sock);
+		exit(1);
+	}
+
+	else if(ret == 0)
+	{
+		continue;
 
 	}
 
+	else
+	{
+		if((fds[0].revents & POLLIN) > 0 ){
+			int yee;
+
+			if((yee = accept(sock, (struct sockaddr*)&client, &clientLen)) < 0)
+			{
+				// TODO: 
+
+			}
+		}
+	}
+	
+	}
 	//TODO: Bind(), and other stuff
 
 	close(sock);
