@@ -176,6 +176,7 @@ bool sendMessage(int sockfd, const std::string &formattedMessage)
 
 
 // Process complete frames and keeps incomplete data in the buffer
+// 
 bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &commands)
 {
     const char SOH = 0x01;
@@ -234,8 +235,7 @@ bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &c
 
 
 /*
-OPEN SOCKET FUNCTION -Reuse our old ones? 
-TODO: Rewrite function, currently edited from template, might just keep it
+OPEN SOCKET FUNCTION 
 */
 
 int open_socket(int portno)
@@ -280,26 +280,6 @@ int open_socket(int portno)
 	return(sock);
 }
 
-
-/*
-
-Structure suggested by AI
- +-- poll()
-         Waits for socket activity
-         |
-         +-- accept()
-         |      Accepts new clients
-         |
-         +-- recv()
-                Receives client data
-                |
-                +-- clientCommand()
-                       Interprets commands
-                       |
-                       +-- sendMessage()
-                              Sends messages
-
-*/
 
 /*
 ---------------
@@ -422,7 +402,6 @@ int main(int argc, const char *argv[])
 
 				if(!processReceivedData(receiveBuffers[fds[i].fd], commands))
 				{
-					//TODO:
 					std::cout << "Invalid frame received" << std:: endl;
 
 				}
