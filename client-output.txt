@@ -1,0 +1,135 @@
+Successfully connected to server!
+Mon Oct 12 20:42:03 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:03 2026
+Sent: SENDMSG,Mave,Kit,Hello Kit!
+Mon Oct 12 20:42:03 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:03 2026
+Sent: SENDMSG,Dylan,Kit,How are you?
+Mon Oct 12 20:42:03 2026
+Received: EMPTY
+Mon Oct 12 20:42:03 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:03 2026
+Sent: GETMSG,Kit
+Mon Oct 12 20:42:03 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:03 2026
+Sent: GETMSG,Kit
+Mon Oct 12 20:42:03 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:03 2026
+Received: Kit:1
+Mon Oct 12 20:42:03 2026
+Received: Kit:2
+Mon Oct 12 20:42:03 2026
+Received: Mave,Hello Kit!
+Mon Oct 12 20:42:03 2026
+Received: Kit:1
+Mon Oct 12 20:42:03 2026
+Received: Dylan,How are you?
+Mon Oct 12 20:42:03 2026
+Received: EMPTY
+Mon Oct 12 20:42:04 2026
+Sent: GETMSG,Kit
+Mon Oct 12 20:42:04 2026
+Received: No messages found for Kit
+Mon Oct 12 20:42:30 2026
+Sent: SENDMSG,Mave,Alice,Hello, how are you, today?
+Mon Oct 12 20:42:30 2026
+Sent: SENDMSG,Kit,Bob,Good morning!
+Mon Oct 12 20:42:30 2026
+Sent: SENDMSG,Dylan,Alice,Second message
+Mon Oct 12 20:42:30 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:30 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:42:30 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:42:30 2026
+Sent: GETMSG,Bob
+Mon Oct 12 20:42:30 2026
+Received: Alice:2,Bob:1
+Mon Oct 12 20:42:30 2026
+Received: Mave,Hello, how are you, today?
+Mon Oct 12 20:42:30 2026
+Received: Dylan,Second message
+Mon Oct 12 20:42:30 2026
+Received: Kit,Good morning!
+Mon Oct 12 20:42:31 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:31 2026
+Received: EMPTY
+Mon Oct 12 20:42:49 2026
+Sent: SENDMSG,Mave,Mave,Hello myself!
+Mon Oct 12 20:42:49 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:49 2026
+Sent: GETMSG,Mave
+Mon Oct 12 20:42:49 2026
+Received: Mave:1
+Mon Oct 12 20:42:49 2026
+Received: Mave,Hello myself!
+Mon Oct 12 20:42:50 2026
+Sent: STATUSREQ
+Mon Oct 12 20:42:50 2026
+Received: EMPTY
+Mon Oct 12 20:45:41 2026
+Sent: SENDMSG,Mave,Alice,Hello, how are you, today?
+Mon Oct 12 20:45:41 2026
+Sent: SENDMSG,Kit,Bob,Good morning!
+Mon Oct 12 20:45:41 2026
+Sent: SENDMSG,Dylan,Alice,Second message
+Mon Oct 12 20:45:41 2026
+Sent: STATUSREQ
+Mon Oct 12 20:45:41 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:45:41 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:45:41 2026
+Sent: GETMSG,Bob
+Mon Oct 12 20:45:41 2026
+Received: Alice:2,Bob:1
+Mon Oct 12 20:45:41 2026
+Received: Mave,Hello, how are you, today?
+Mon Oct 12 20:45:41 2026
+Received: Dylan,Second message
+Mon Oct 12 20:45:41 2026
+Received: Kit,Good morning!
+Mon Oct 12 20:45:41 2026
+Sent: STATUSREQ
+Mon Oct 12 20:45:41 2026
+Received: EMPTY
+Mon Oct 12 20:50:36 2026
+Sent: SENDMSG,Mave,Alice,Hello, how are you, today?
+Mon Oct 12 20:50:36 2026
+Sent: SENDMSG,Kit,Bob,Good morning!
+Mon Oct 12 20:50:36 2026
+Sent: SENDMSG,Dylan,Alice,Second message
+Mon Oct 12 20:50:36 2026
+Sent: STATUSREQ
+Mon Oct 12 20:50:36 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:50:36 2026
+Sent: GETMSG,Alice
+Mon Oct 12 20:50:36 2026
+Sent: GETMSG,Bob
+Mon Oct 12 20:50:36 2026
+Received: Alice:2,Bob:1
+Mon Oct 12 20:50:36 2026
+Received: Mave,Hello, how are you, today?
+Mon Oct 12 20:50:36 2026
+Received: Dylan,Second message
+Mon Oct 12 20:50:36 2026
+Received: Kit,Good morning!
+Mon Oct 12 20:50:37 2026
+Sent: STATUSREQ
+Mon Oct 12 20:50:37 2026
+Received: EMPTY
+Mon Oct 12 20:52:02 2026
+Sent: SENDMSG,Mave,Kit,Hello!
+Mon Oct 12 20:52:02 2026
+Sent: STATUSREQ
+Mon Oct 12 20:52:02 2026
+Received: Kit:1
