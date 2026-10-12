@@ -1,5 +1,3 @@
-//sup
-
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -176,7 +174,7 @@ bool sendMessage(int sockfd, const std::string &formattedMessage)
 
 
 // Process complete frames and keeps incomplete data in the buffer
-// 
+ 
 bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &commands)
 {
     const char SOH = 0x01;
