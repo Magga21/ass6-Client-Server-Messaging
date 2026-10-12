@@ -118,9 +118,65 @@ std::string getTimestamp()
     return std::ctime(&timestamp);
 }
 
+// Formats message according to communication protocol: <SOH><length><STX><command><ETX>
+std::string formatMessage(std::string message)
+{
+    const char SOH = 0x01;
+    const char STX = 0x02;
+    const char ETX = 0x03;
+
+    uint16_t length = message.size() + 5;
+    uint16_t networkLength = htons(length);
+
+    std::string messageToServer;
+
+    messageToServer.push_back(SOH);
+    messageToServer.append(reinterpret_cast<const char *>(&networkLength), sizeof(networkLength));
+    messageToServer.push_back(STX);
+    messageToServer.append(message);
+    messageToServer.push_back(ETX);
+
+    return messageToServer;
+}
+
+// Sends the message and handles partial sends
+bool sendMessage(int sockfd, const std::string &formattedMessage)
+{
+    size_t totalSent = 0;
+
+    // Keep sending until all bytes of message have been sent
+    while (totalSent < formattedMessage.size())
+    {
+        ssize_t bytesSent = send(sockfd, formattedMessage.data() + totalSent, formattedMessage.size() - totalSent, MSG_NOSIGNAL);
+
+        if (bytesSent < 0)
+        {
+            // Retries send if system call was interrupted
+            if (errno == EINTR)
+            {
+                continue;
+            }
+
+            perror("send() failed");
+            return false;
+        }
+
+        if (bytesSent == 0)
+        {
+            std::cerr << "Connection closed while sending" << std::endl;
+            return false;
+        }
+
+        // Update total number of bytes that have been sent successfully
+        totalSent += static_cast<size_t>(bytesSent);
+    }
+
+    return true;
+}
+
 
 // Process complete frames and keeps incomplete data in the buffer
-bool processReceivedData(std::string &receiveBuffer)
+bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &commands)
 {
     const char SOH = 0x01;
     const char STX = 0x02;
@@ -163,6 +219,8 @@ bool processReceivedData(std::string &receiveBuffer)
 
         // Extract the command or response from the frame
         std::string response = receiveBuffer.substr(4, length - 5);
+
+		commands.push_back(response);
 
         std::cout << getTimestamp();
         std::cout << "Received: " << response << std::endl;
@@ -268,8 +326,6 @@ int main(int argc, const char *argv[])
 		exit(1);
 	}
 
-	// TODO: See if needs to be changed later on
-
 	if((listen(sock, 5))< 0)
 	{
 		std::cerr << "Failed to listen to socket! Braking! " << std::endl;
@@ -297,6 +353,8 @@ int main(int argc, const char *argv[])
 	{
 		std::cerr << "Failed to open log file!" << std::endl;
 	}
+
+	std::map<std::string, std::vector<std::string>> storedMessages;
 
 	while (true){
 	ret = poll(fds.data(), fds.size(), timeout_msecs);
@@ -329,10 +387,7 @@ int main(int argc, const char *argv[])
 			pollfd clientfds;
 			clientfds.fd = yee;
 			clientfds.events = POLLIN;
-		
 			fds.push_back(clientfds);
-
-
 		}
 	
 	size_t i = 1;
@@ -363,11 +418,101 @@ int main(int argc, const char *argv[])
 			{
 				receiveBuffers[fds[i].fd].append(buffer, msgs);
 
-				if(!processReceivedData(receiveBuffers[fds[i].fd]))
+				std::vector<std::string> commands;
+
+				if(!processReceivedData(receiveBuffers[fds[i].fd], commands))
 				{
 					//TODO:
-					std::cout << "Handle error goes here" << std:: endl;
+					std::cout << "Invalid frame received" << std:: endl;
+
 				}
+
+				for(const std::string &command : commands)
+				{
+					if(!validateMessage(command))
+					{
+						std::cerr << "Invalid command: " << command << std::endl;
+						continue;
+					}
+					std::cout << "Valid command: " << command << std::endl;
+					if (command.rfind("SENDMSG,", 0) == 0)
+					{
+						std::stringstream ss(command);
+						std::string part;
+						std::vector<std::string> parts;
+
+						// Splits the first three parts by commas (in case the message part has more commas)
+						for (int i = 0; i < 3; i++)
+						{
+							// Stops the loop if input is missing parts
+							if (!std::getline(ss, part, ','))
+							{
+								break;
+							}
+							parts.push_back(part);
+						}
+
+						// Keepd the remaining part as the message
+						if (parts.size() == 3)
+						{
+							if (std::getline(ss, part))
+							{
+								parts.push_back(part);
+							}
+
+						std::string storedMsg = parts[1] + "," + parts[3];
+
+						storedMessages[parts[2]].push_back(storedMsg);
+						}
+					}
+					else if (command.rfind("GETMSG,", 0) == 0)
+					{
+						std::string username = command.substr(7);
+						auto it = storedMessages.find(username);
+						if (it != storedMessages.end() && !it->second.empty())
+						{
+							std::string msgs = it->second.front();
+
+							std::string framedMessage = formatMessage(msgs);
+
+							if(sendMessage(fds[i].fd, framedMessage))
+							{
+								std::cout << msgs << std::endl;
+
+								it->second.erase(it->second.begin());
+							}
+							else{
+								std::cerr << "Failed to send message" << std::endl;
+							}
+						}
+						else
+						{
+							std::cerr << "No messages found for " << username << std::endl; 
+						}
+					}
+					else // Command == STATUSREQ
+					{
+						std:: string outputmsgs("");
+						for(const auto &entry : storedMessages)
+							if(entry.second.size() > 0)
+							{
+								std::string numofmsgs = std::to_string(entry.second.size());
+								if (!outputmsgs.empty())
+								{
+									outputmsgs += ",";
+								}
+								outputmsgs.append(entry.first + ":" + numofmsgs);
+								
+							}
+						if (outputmsgs.empty())
+						{
+							outputmsgs = "EMPTY";
+						}
+						std::string framedMessage = formatMessage(outputmsgs);
+						sendMessage(fds[i].fd, framedMessage);
+					}
+				}
+
 
 				std::string timeStamp(getTimestamp()); 
 
@@ -378,15 +523,11 @@ int main(int argc, const char *argv[])
 				logFile << "[" << timeStamp << "] RECEIVED: " << message << std::endl;
 
 			}
-
 		}
 		i++; 
 	}
-
-	}
-	
-	}
-	
+}
+}
 	logFile.close();
 	close(sock);
 	return 0;
