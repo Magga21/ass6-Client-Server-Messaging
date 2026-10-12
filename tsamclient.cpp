@@ -309,7 +309,7 @@ int main(int argc, const char *argv[])
             continue;
         }
 
-        bool inputReady = monitored_fds[0].revents & POLLIN
+        bool inputReady = monitored_fds[0].revents & POLLIN;
 
         if (inputReady)
         {
@@ -389,7 +389,7 @@ int main(int argc, const char *argv[])
             {
                 receiveBuffer.append(buffer, bytesReceived);
 
-                if (!processReceivedData(receiveBuffer))
+                if (!processResponse(receiveBuffer))
                 {
                     finished = true;
                 }
