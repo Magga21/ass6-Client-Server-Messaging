@@ -18,16 +18,166 @@
 #include <list>
 #include <poll.h>
 
+#include <ctime>
+
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <cstdint>
+#include <cstring>
+
 #include <thread>
 #include <map>
 
 #include <unistd.h>
 
+// Checks if user input is a valid command
+bool validateMessage(std::string input)
+{
+    size_t firstComma = input.find(',');
+    // Extract command from input
+    std::string command = input.substr(0, firstComma);
+
+    if (input == "STATUSREQ")
+    {
+        return true;
+    }
+    else if (command == "GETMSG")
+    {
+        // Checks that a comma seperates GETMSG from the username
+        if (firstComma == std::string::npos)
+        {
+            return false;
+        }
+
+        std::string username = input.substr(firstComma + 1);
+
+        // Make sure there are no additional commas
+        if (username.find(',') != std::string::npos)
+        {
+            return false;
+        }
+
+        if (!username.empty())
+        {
+            return true;
+        }
+    }
+    else if (command == "SENDMSG")
+    {
+        std::stringstream ss(input);
+        std::string part;
+        std::vector<std::string> parts;
+
+        // Splits the first three parts by commas (in case the message part has more commas)
+        for (int i = 0; i < 3; i++)
+        {
+            // Stops the loop if input is missing required parts
+            if (!std::getline(ss, part, ','))
+            {
+                break;
+            }
+            parts.push_back(part);
+        }
+
+        // Keeps the remaining part as the message
+        if (parts.size() == 3)
+        {
+            if (std::getline(ss, part))
+            {
+                parts.push_back(part);
+            }
+        }
+
+        // Checks if input containes these parts: SENDMSG,<from>,<to>,<message>
+        if (parts.size() != 4)
+        {
+            return false;
+        }
+
+        // Checks if each part contains data
+        for (size_t i = 0; i < parts.size(); i++)
+        {
+            if (parts[i].empty())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+/*
+Time stamp helper function 
+*/
+// Returns a timestamp for current date and time
+std::string getTimestamp()
+{
+    std::time_t timestamp = std::time(nullptr);
+    return std::ctime(&timestamp);
+}
+
+
+// Process complete frames and keeps incomplete data in the buffer
+bool processReceivedData(std::string &receiveBuffer)
+{
+    const char SOH = 0x01;
+    const char STX = 0x02;
+    const char ETX = 0x03;
+
+    while (receiveBuffer.size() >= 5)
+    {
+        // Start of frame
+        if (receiveBuffer[0] != SOH)
+        {
+            std::cerr << "Invalid frame: missing SOH" << std::endl;
+            return false;
+        }
+
+        // Read the two byte length in network byte order
+        uint16_t networkLength;
+        std::memcpy(&networkLength, receiveBuffer.data() + 1, sizeof(networkLength));
+
+        uint16_t length = ntohs(networkLength);
+
+        // A valid frame needs contains at least 5 bytes
+        if (length < 5)
+        {
+            std::cerr << "Invalid frame length" << std::endl;
+            return false;
+        }
+
+        // Wait for more data if the frame is incomplete
+        if (receiveBuffer.size() < length)
+        {
+            break;
+        }
+
+        // Check the remaining framing characters
+        if (receiveBuffer[3] != STX || receiveBuffer[length - 1] != ETX)
+        {
+            std::cerr << "Invalid frame structure" << std::endl;
+            return false;
+        }
+
+        // Extract the command or response from the frame
+        std::string response = receiveBuffer.substr(4, length - 5);
+
+        std::cout << getTimestamp();
+        std::cout << "Received: " << response << std::endl;
+
+        receiveBuffer.erase(0, length);
+    }
+
+    return true;
+}
+
+
+
 /*
 OPEN SOCKET FUNCTION -Reuse our old ones? 
-TODO: Rewrite function, currently only a template
+TODO: Rewrite function, currently edited from template, might just keep it
 */
 
 int open_socket(int portno)
@@ -71,13 +221,6 @@ int open_socket(int portno)
 
 	return(sock);
 }
-
-/*
-LISTEN TO PORT FUNC- again reuse prior?
-Might not need one
-*/
-
-
 
 
 /*
@@ -140,12 +283,21 @@ int main(int argc, const char *argv[])
 	pfd.events = POLLIN;
 	int timeout_msecs = 500;
 	int ret;
-		int i;
+		
+	std::map<int, std::string> receiveBuffers;
 
 	fds.push_back(pfd);
 	
 	struct sockaddr_in client;
 	socklen_t clientLen = sizeof(client);
+
+	// Create and write into the log file with the append command
+	std::ofstream logFile("server.log", std::ios::app);
+	if (!logFile.is_open())
+	{
+		std::cerr << "Failed to open log file!" << std::endl;
+	}
+
 	while (true){
 	ret = poll(fds.data(), fds.size(), timeout_msecs);
 	
@@ -169,15 +321,73 @@ int main(int argc, const char *argv[])
 
 			if((yee = accept(sock, (struct sockaddr*)&client, &clientLen)) < 0)
 			{
-				// TODO: 
+				std::cerr << "Failed to accept socket! Braking! " << std::endl;
+				close(sock);
+				exit(1);
+				
+			}
+			pollfd clientfds;
+			clientfds.fd = yee;
+			clientfds.events = POLLIN;
+		
+			fds.push_back(clientfds);
+
+
+		}
+	
+	size_t i = 1;
+	
+	while (i < fds.size())
+	{
+		if(fds[i].revents & POLLIN)
+		{
+			char buffer[5000];
+
+			int msgs = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+			
+			if(msgs < 0)
+			{
+				perror("recv failed");
+			}
+
+			else if (msgs == 0)
+			{
+				receiveBuffers.erase(fds[i].fd);
+				close(fds[i].fd);
+				fds.erase(fds.begin() + i);
+				continue;
 
 			}
+
+			else
+			{
+				receiveBuffers[fds[i].fd].append(buffer, msgs);
+
+				if(!processReceivedData(receiveBuffers[fds[i].fd]))
+				{
+					//TODO:
+					std::cout << "Handle error goes here" << std:: endl;
+				}
+
+				std::string timeStamp(getTimestamp()); 
+
+				std::string message(buffer, msgs);
+
+				timeStamp.pop_back();
+
+				logFile << "[" << timeStamp << "] RECEIVED: " << message << std::endl;
+
+			}
+
 		}
+		i++; 
+	}
+
 	}
 	
 	}
-	//TODO: Bind(), and other stuff
-
+	
+	logFile.close();
 	close(sock);
 	return 0;
 }
