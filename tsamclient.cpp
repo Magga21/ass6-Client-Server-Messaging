@@ -25,7 +25,7 @@ TCP HELPER FUNCTIONS
 bool validateMessage(std::string input)
 {
     size_t firstComma = input.find(',');
-    // Extract command from input
+    // Extracts command from input
     std::string command = input.substr(0, firstComma);
 
     if (input == "STATUSREQ")
@@ -62,7 +62,7 @@ bool validateMessage(std::string input)
         // Splits the first three parts by commas (in case the message part has more commas)
         for (int i = 0; i < 3; i++)
         {
-            // Stops the loop if input is missing required parts
+            // Stops the loop if input is missing parts
             if (!std::getline(ss, part, ','))
             {
                 break;
@@ -70,7 +70,7 @@ bool validateMessage(std::string input)
             parts.push_back(part);
         }
 
-        // Keeps the remaining part as the message
+        // Keepd the remaining part as the message
         if (parts.size() == 3)
         {
             if (std::getline(ss, part))
@@ -131,7 +131,7 @@ bool sendMessage(int sockfd, const std::string &formattedMessage)
 
         if (bytesSent < 0)
         {
-            // Retries send if system call was interrupted
+            // Retries send() if system call was interrupted
             if (errno == EINTR)
             {
                 continue;
@@ -147,8 +147,7 @@ bool sendMessage(int sockfd, const std::string &formattedMessage)
             return false;
         }
 
-        // Update total number of bytes that have been sent successfully
-        totalSent += static_cast<size_t>(bytesSent);
+        totalSent += bytesSent;
     }
 
     return true;
@@ -161,49 +160,49 @@ std::string getTimestamp()
     return std::ctime(&timestamp);
 }
 
-// Process complete frames and keeps incomplete data in the buffer
-bool processReceivedData(std::string &receiveBuffer)
+// Process response and handle incomplete data
+bool processResponse(std::string &receiveBuffer)
 {
     const char SOH = 0x01;
     const char STX = 0x02;
     const char ETX = 0x03;
 
+    // Start checking the response data
     while (receiveBuffer.size() >= 5)
     {
-        // Start of frame
+        // Check start frame
         if (receiveBuffer[0] != SOH)
         {
-            std::cerr << "Invalid frame: missing SOH" << std::endl;
+            std::cerr << "Invalid frame! Missing SOH" << std::endl;
             return false;
         }
 
-        // Read the two byte length in network byte order
+        // Find the length of the response
         uint16_t networkLength;
         std::memcpy(&networkLength, receiveBuffer.data() + 1, sizeof(networkLength));
 
         uint16_t length = ntohs(networkLength);
 
-        // A valid frame needs contains at least 5 bytes
         if (length < 5)
         {
-            std::cerr << "Invalid frame length" << std::endl;
+            std::cerr << "Invalid frame length!" << std::endl;
             return false;
         }
 
-        // Wait for more data if the frame is incomplete
+        // Wait for more data if entire message hasn't arrived
         if (receiveBuffer.size() < length)
         {
             break;
         }
 
-        // Check the remaining framing characters
+        // Check remaining frames
         if (receiveBuffer[3] != STX || receiveBuffer[length - 1] != ETX)
         {
-            std::cerr << "Invalid frame structure" << std::endl;
+            std::cerr << "Invalid frame structure!" << std::endl;
             return false;
         }
 
-        // Extract the command or response from the frame
+        // Extract the response
         std::string response = receiveBuffer.substr(4, length - 5);
 
         std::cout << getTimestamp();
@@ -225,14 +224,14 @@ Connects to a server, monitors input and socket activity and sends formatted com
 int main(int argc, const char *argv[])
 {
 
-    // Make sure the correct number of command line arguments were provided
+    // Makes sure the correct number of command line arguments was given
     if (argc != 3)
     {
-        std::cerr << "Invalid number of arguments. Usage: ./tsamclient <IPaddress> <port>" << std::endl;
+        std::cerr << "Invalid number of arguments. Need: ./tsamclient <IPaddress> <port>" << std::endl;
         exit(1);
     }
 
-    // Read the IP address and validate the port number
+    // Stores the IP address and validate the port number
     const char *ipaddr = argv[1];
     int port;
 
@@ -252,7 +251,7 @@ int main(int argc, const char *argv[])
         exit(1);
     }
 
-    // Create TCP socket
+    // Creates TCP socket
     int client_sockfd;
     if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
@@ -260,19 +259,19 @@ int main(int argc, const char *argv[])
         exit(1);
     }
 
-    // Set up the servers IPv4 address and port
+    // Sets up the server IPv4 address and port
     struct sockaddr_in servaddr{};
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(port);
 
-    // Convert IP address to its binary representation
+    // Converts IP address to its binary representation
     if (inet_pton(AF_INET, ipaddr, &servaddr.sin_addr) < 1)
     {
         std::cerr << "Invalid IP address of address family: " << ipaddr << std::endl;
         exit(1);
     }
 
-    // Connect the client socket to the server socket
+    // Connects the client socket to the server socket
     if (connect(client_sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
     {
         perror("Connection with the server failed");
@@ -281,10 +280,10 @@ int main(int argc, const char *argv[])
 
     std::cout << "Successfully connected to server!" << std::endl;
 
-    // Monitor user input and incoming data from the server
+    // Monitors user input and incoming data from the server
     std::vector<struct pollfd> monitored_fds;
-    monitored_fds.push_back({STDIN_FILENO, POLLIN, 0});
-    monitored_fds.push_back({client_sockfd, POLLIN, 0});
+    monitored_fds.push_back({STDIN_FILENO, POLLIN, 0});  // user input
+    monitored_fds.push_back({client_sockfd, POLLIN, 0}); // server
 
     char buffer[5001];
     ssize_t bytesReceived;
@@ -310,7 +309,9 @@ int main(int argc, const char *argv[])
             continue;
         }
 
-        if (monitored_fds[0].revents & POLLIN)
+        bool inputReady = monitored_fds[0].revents & POLLIN
+
+        if (inputReady)
         {
             std::string message;
 
@@ -320,11 +321,16 @@ int main(int argc, const char *argv[])
             }
             else if (message.size() + 5 > 5000)
             {
-                std::cerr << "Command is too long. Maximum size is 5000 bytes" << std::endl;
+                std::cerr << "Command is too long. Commands can be up to a length of 5000 bytes" << std::endl;
             }
             else if (!validateMessage(message))
             {
-                std::cerr << "Invalid command" << std::endl;
+                std::cerr << "Invalid command!\n"
+                          << "Allowed commands:\n"
+                          << "SENDMSG,<from>,<to>,<message>\n"
+                          << "GETMSG,<username>\n"
+                          << "STATUSREQ\n"
+                          << std::endl;
             }
             else
             {
@@ -342,16 +348,19 @@ int main(int argc, const char *argv[])
             }
         }
 
-        // Check for socket errors
-        if (monitored_fds[1].revents & (POLLERR | POLLNVAL))
+        // Checks for socket errors
+        bool socketError = monitored_fds[1].revents & (POLLERR | POLLNVAL);
+
+        if (socketError)
         {
             std::cerr << "Server socket error" << std::endl;
             finished = true;
         }
 
-        if (!finished && (monitored_fds[1].revents & (POLLIN | POLLHUP)))
+        bool socketReady = monitored_fds[1].revents & (POLLIN | POLLHUP);
+
+        if (!finished && socketReady)
         {
-            // Receive and reconstruct server responses
             bytesReceived = recv(client_sockfd, buffer, sizeof(buffer), 0);
 
             if (bytesReceived == 0)
@@ -369,6 +378,7 @@ int main(int argc, const char *argv[])
             }
             else if (bytesReceived < 0)
             {
+                // Retries if recv() was interrupted
                 if (errno != EINTR)
                 {
                     perror("Error receiving");
@@ -386,7 +396,6 @@ int main(int argc, const char *argv[])
             }
         }
     }
-
     close(client_sockfd);
     return 0;
 }
