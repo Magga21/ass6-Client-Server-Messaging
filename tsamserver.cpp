@@ -486,8 +486,11 @@ int main(int argc, const char *argv[])
 							}
 						}
 						else
-						{
-							std::cerr << "No messages found for " << username << std::endl; 
+						{	
+							std:: string msgs("");
+							msgs.append ("No messages found for " + username);
+							std::string framedMessage = formatMessage(msgs);
+							sendMessage(fds[i].fd, framedMessage);
 						}
 					}
 					else // Command == STATUSREQ
