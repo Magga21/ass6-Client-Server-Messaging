@@ -173,24 +173,24 @@ bool sendMessage(int sockfd, const std::string &formattedMessage)
 }
 
 
-// Process complete frames and keeps incomplete data in the buffer
- 
-bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &commands)
+// Process response and handle incomplete data
+bool processResponse(std::string &receiveBuffer, std::vector<std::string> &commands)
 {
     const char SOH = 0x01;
     const char STX = 0x02;
     const char ETX = 0x03;
 
+	// Start checking the response data
     while (receiveBuffer.size() >= 5)
     {
-        // Start of frame
+        // Check start frame
         if (receiveBuffer[0] != SOH)
         {
             std::cerr << "Invalid frame: missing SOH" << std::endl;
             return false;
         }
 
-        // Read the two byte length in network byte order
+        // Find the length of the response
         uint16_t networkLength;
         std::memcpy(&networkLength, receiveBuffer.data() + 1, sizeof(networkLength));
 
@@ -199,24 +199,24 @@ bool processReceivedData(std::string &receiveBuffer, std::vector<std::string> &c
         // A valid frame needs contains at least 5 bytes
         if (length < 5)
         {
-            std::cerr << "Invalid frame length" << std::endl;
+            std::cerr << "Invalid frame length!" << std::endl;
             return false;
         }
 
-        // Wait for more data if the frame is incomplete
+        // Wait for more data if entire message hasn't arrived
         if (receiveBuffer.size() < length)
         {
             break;
         }
 
-        // Check the remaining framing characters
+        // Check remaining frames
         if (receiveBuffer[3] != STX || receiveBuffer[length - 1] != ETX)
         {
             std::cerr << "Invalid frame structure" << std::endl;
             return false;
         }
 
-        // Extract the command or response from the frame
+        // Extract the response
         std::string response = receiveBuffer.substr(4, length - 5);
 
 		commands.push_back(response);
@@ -398,7 +398,7 @@ int main(int argc, const char *argv[])
 
 				std::vector<std::string> commands;
 
-				if(!processReceivedData(receiveBuffers[fds[i].fd], commands))
+				if(!processResponse(receiveBuffers[fds[i].fd], commands))
 				{
 					std::cout << "Invalid frame received" << std:: endl;
 
@@ -429,7 +429,7 @@ int main(int argc, const char *argv[])
 							parts.push_back(part);
 						}
 
-						// Keepd the remaining part as the message
+						// Keeps the remaining part as the message
 						if (parts.size() == 3)
 						{
 							if (std::getline(ss, part))
