@@ -224,14 +224,14 @@ Connects to a server, monitors input and socket activity and sends formatted com
 int main(int argc, const char *argv[])
 {
 
-    // Makes sure the correct number of command line arguments was given
+    // Make sure the correct number of command line arguments was given
     if (argc != 3)
     {
         std::cerr << "Invalid number of arguments. Need: ./tsamclient <IPaddress> <port>" << std::endl;
         exit(1);
     }
 
-    // Stores the IP address and validate the port number
+    // Store the IP address and validate the port number
     const char *ipaddr = argv[1];
     int port;
 
